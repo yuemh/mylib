@@ -100,6 +100,9 @@ class FiltCurve(lambdafunc):
     def __init__(self, wavelength, value, units=[u.Angstrom,u.Quantity(1)]):
         self.update(wavelength,value,units)
 
+    @property
+    def central_wavelength(self):
+        return np.average(self.wavelength, weights=self.value) * self.units[0]
 
 def read_filter(instrument, filtername, index=[0,1], uflag=0):
     filename = instru_filter_dict[instrument][filtername]
