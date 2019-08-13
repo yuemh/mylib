@@ -104,6 +104,9 @@ class FiltCurve(lambdafunc):
     def central_wavelength(self):
         return np.average(self.wavelength, weights=self.value) * self.units[0]
 
+    def move_to_redshift(self, redshift=0):
+        self.update(self.wavelength * (1 + redshift), self.value, self.units)
+
 def read_filter(instrument, filtername, index=[0,1], uflag=0):
     filename = instru_filter_dict[instrument][filtername]
     data = np.loadtxt(filename)
