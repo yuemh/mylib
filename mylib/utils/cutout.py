@@ -8,6 +8,10 @@ from PIL import Image
 from io import BytesIO
 import pylab
 
+from pyvo.dal import sia
+#DEF_ACCESS_URL = "https://datalab.noao.edu/sia/des_dr1"
+#svc = sia.SIAService(DEF_ACCESS_URL)
+
 class image_cutout(object):
 
     def __init__(self, image, north=0):
@@ -36,7 +40,7 @@ class ps1_cutout_downloader(object):
     def __init__(self):
         self.pixscale = 0.25
 
-    def geturl(self, ra, dec, size=240, output_size=None, filters="grizy",\
+    def geturl(self, ra, dec, size, filters="grizy", output_size=None,\
                format="fits", color=False):
 
         """Get URL for images in the table
@@ -51,6 +55,7 @@ class ps1_cutout_downloader(object):
                 Default is return a list of URLs for single-filter grayscale images.
         Returns a string with the URL
         """
+        sizepix = int(size / self.pixscale)
 
         # disable the function of downloading multiple filters at once
         if len(filters)>1:
@@ -60,9 +65,9 @@ class ps1_cutout_downloader(object):
             raise ValueError("color images are available only for jpg or png formats")
         if format not in ("jpg", "png", "fits"):
             raise ValueError("format must be one of jpg, png, fits")
-        table = self.getimages(ra, dec, size=size, filters=filters)
+        table = self.getimages(ra, dec, sizepix=sizepix, filters=filters)
         url = ("https://ps1images.stsci.edu/cgi-bin/fitscut.cgi?"
-               "ra={ra}&dec={dec}&size={size}&format={format}").format(**locals())
+               "ra={ra}&dec={dec}&size={sizepix}&format={format}").format(**locals())
         if output_size:
             url = url + "&output_size={}".format(output_size)
         # sort filters from red to blue
@@ -82,7 +87,7 @@ class ps1_cutout_downloader(object):
                 url.append(urlbase + filename)
         return url
 
-    def getimages(self, ra, dec, size=240, filters="grizy"):
+    def getimages(self, ra, dec, sizepix, filters):
         """Query ps1filenames.py service to get a list of images
 
         ra, dec = position in degrees
@@ -92,23 +97,24 @@ class ps1_cutout_downloader(object):
         """
 
         service = "https://ps1images.stsci.edu/cgi-bin/ps1filenames.py"
-        url = ("{service}?ra={ra}&dec={dec}&size={size}&format=fits"
+        url = ("{service}?ra={ra}&dec={dec}&size={sizepix}&format=fits"
                "&filters={filters}").format(**locals())
         table = Table.read(url, format='ascii')
         return table
 
-    def download_images(self, ra, dec, size=240, output_size=None, \
+    def download_images(self, ra, dec, size=6, output_size=None, \
                         filters="i", format="fits", color=False,\
-                        outname_root='J', outname_precision=2):
+                        outdir='.', outname_root='J', outname_precision=2):
 
-        size = int(size)
+#        size = int(size)
         url = self.geturl(ra, dec, size=size, output_size=output_size, \
                                filters=filters, format=format, color=color)
 
         coord = SkyCoord(ra=ra, dec=dec, unit='deg')
         coordstr = coord.to_string('hmsdms', sep='', precision=outname_precision)
 
-        outname = outname_root + coordstr.replace(' ', '') + '.%s.%s'%(filters, format)
+        outname = outdir + '/' + outname_root\
+                + coordstr.replace(' ', '') + '.%s.%s'%(filters, format)
         os.system('wget -O %s "%s"'%(outname, url[0]))
 
 
@@ -131,17 +137,18 @@ class legacy_cutout_downloader(object):
         :param format: can be 'jpg', 'fits'
         :return: the url for downloading
         """
+        sizepix = int(size / self.pixscale)
         service = "http://legacysurvey.org/viewer/"
         url = ["{service}{format}-cutout?ra={ra}&dec={dec}"
-               "&size={size}&layer={layer}&pixscale={pixscale}"
+               "&size={sizepix}&layer={layer}&pixscale={pixscale}"
                "&bands={filters}".format(**locals())]
 
         #table = Table.read(url, format='ascii')
         return url
 
-    def download_images(self, ra, dec, size=200, \
-                        filters='z', layer='mzls+bass-dr6', format='fits', \
-                        outname_root='J', outname_precision=2):
+    def download_images(self, ra, dec, size=6, \
+                        filters='z', layer='dr8', format='fits', \
+                        outdir='.', outname_root='J', outname_precision=2):
         """
 
         :param ra: float, ra of the object, in deg
@@ -153,21 +160,80 @@ class legacy_cutout_downloader(object):
         :param fmt:
         :return:
         """
-        size = int(size)
+#        size = int(size)
         url = self.geturl(ra, dec, size, filters=filters, pixscale=self.pixscale,\
                           layer=layer, format=format)
 
         coord = SkyCoord(ra=ra, dec=dec, unit='deg')
         coordstr = coord.to_string('hmsdms', sep='', precision=outname_precision)
-        outname = outname_root + coordstr.replace(' ', '') + '.%s.%s' % (filters, format)
+        outname = outdir + '/' + outname_root\
+                + coordstr.replace(' ', '') + '.%s.%s' % (filters, format)
 
         os.system('wget -O %s "%s"' % (outname, url[0]))
+
+
+class des_cutout_downloader(object):
+    def __init__(self):
+        dummy = 1
+        self.url_dr1 = "https://datalab.noao.edu/sia/des_dr1"
+        self.svc_dr1 = sia.SIAService(self.url_dr1)
+
+    def geturl(self, ra, dec, size, filters):
+
+        fov = size / 3600
+        svc = self.svc_dr1
+        imgTable = svc.search((ra,dec), (fov/np.cos(dec*np.pi/180), fov), verbosity=2).table
+        sel0 = imgTable['obs_bandpass'].astype(str)==filters
+
+        sel = sel0 & ((imgTable['proctype'].astype(str)=='Stack')\
+                      & (imgTable['prodtype'].astype(str)=='image')) # basic selection
+        Table = imgTable[sel]
+        if (len(Table)>0):
+            row = Table[np.argmax(Table['exptime'].data.data.astype('float'))] # pick image with longest exposure time
+            url = row['access_url'].decode() # get the download URL
+
+        else:
+            print(imgTable)
+            print('No image available.')
+            url = None
+
+        return url
+
+    def download_images(self, ra, dec, size=6, filters='z',\
+                        outdir='.', outname_root='J', outname_precision=2):
+        """
+
+        :param ra: float, ra of the object, in deg
+        :param dec: float, dec of the object, in deg
+        :param size: int, size of the image, in pixels
+        :param output_filename: str, the filename(s) to save
+        :param filters:
+        :param layer:
+        :param fmt:
+        :return:
+        """
+        url = self.geturl(ra, dec, size, filters)
+
+#        print(url)
+        coord = SkyCoord(ra=ra, dec=dec, unit='deg')
+        coordstr = coord.to_string('hmsdms', sep='', precision=outname_precision)
+        outname = outdir + '/' + outname_root\
+                + coordstr.replace(' ', '') + '.%s.fits' % (filters)
+
+#        print(outname)
+#        print('wget -O %s "%s"' % (outname, url))
+
+        if url:
+            os.system('wget -O %s "%s"' % (outname, url))
+        else:
+            print('No image available.')
 
 ### make global variables
 PS1_cutout_downloader = ps1_cutout_downloader()
 Legacy_cutout_downloader = legacy_cutout_downloader()
+DES_cutout_downloader = des_cutout_downloader()
+
+#DES_cutout_downloader.download_images(10, 0)
 
 #PS1_cutout_downloader.download_images(0, 0, 20)
-class des_cutout_downloader(object):
-    def __init__(self):
-        dummy = 1
+
