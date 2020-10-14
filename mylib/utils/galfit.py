@@ -200,7 +200,9 @@ S) %(interactive)d
 
     def fit(self):
         self.writeparams()
-        failure = os.system(exe_dir +'/galfit '+self.parfile)
+        failure = os.system('/Users/minghao/Research/Softwares/galfit-example/galfit '+self.parfile)
+
+#        failure = os.system(exe_dir +'/galfit '+self.parfile)
 #		p = Popen(['/home/minghao/software/executable/galfit',self.parfile],stdout=PIPE)
 #		self.galfit_output = p.communicate()
 

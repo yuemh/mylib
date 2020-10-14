@@ -58,6 +58,28 @@ MegaCam_filter_dict=\
         {'MegaCam_g': filter_dir + '/MegaCam/gS.dat',\
         'MegaCam_i': filter_dir + '/MegaCam/iS.dat'}
 
+TwoMASS_filter_dict =\
+        {'2MASS_J': filter_dir + '/2MASS/j_2mass.txt',\
+        '2MASS_H': filter_dir + '/2MASS/h_2mass.txt',\
+        '2MASS_Ks': filter_dir + '/2MASS/ks_2mass.txt'}
+
+DECam_filter_dict = \
+        {'DECam_g': filter_dir + '/DECam/STD_BANDPASSES_DR1.dat',\
+        'DECam_r': filter_dir + '/DECam/STD_BANDPASSES_DR1.dat',\
+        'DECam_i': filter_dir + '/DECam/STD_BANDPASSES_DR1.dat',\
+        'DECam_z': filter_dir + '/DECam/STD_BANDPASSES_DR1.dat',\
+        'DECam_Y': filter_dir + '/DECam/STD_BANDPASSES_DR1.dat'}
+
+VISTA_filter_dict = \
+        {'VHS_J': filter_dir + '/VHS/Paranal_VISTA.J.dat',\
+        'VHS_H': filter_dir + '/VHS/Paranal_VISTA.H.dat',\
+        'VHS_Ks': filter_dir + '/VHS/Paranal_VISTA.Ks.dat'}
+
+UKIDSS_filter_dict = \
+        {'UHS_J': filter_dir + '/UHS/UKIRT_UKIDSS.J.dat',\
+        'UHS_H': filter_dir + '/UHS/UKIRT_UKIDSS.H.dat',\
+        'UHS_K': filter_dir + '/UHS/UKIRT_UKIDSS.K.dat'}
+
 instru_filter_dict=\
         {'SDSS':SDSS_filter_dict,\
          'ACSWFC':WFC_filter_dict,\
@@ -66,7 +88,11 @@ instru_filter_dict=\
          'WFCAM':WFCAM_filter_dir,\
          'Pan-Starrs':PanStarrs_filter_dict,\
          'WISE':WISE_filter_dict,\
-         'MegaCam': MegaCam_filter_dict}
+         'MegaCam': MegaCam_filter_dict,\
+         '2MASS': TwoMASS_filter_dict,\
+         'DECam': DECam_filter_dict,\
+         'VHS': VISTA_filter_dict,\
+         'UHS':UKIDSS_filter_dict}
 
 
 class lambdafunc(object):
